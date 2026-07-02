@@ -52,14 +52,15 @@ async function interpretarMensagemComIA(textoDoUsuario) {
 
     try {
         const resposta = await ai.models.generateContent({
-            model: 'gemini-2.5-flash', // Modelo rápido e ideal para extração de texto
+            model: 'gemini-3.1-flash-lite', 
             contents: prompt,
-            config: { responseMimeType: "application/json" } // Força o retorno em JSON puro
+            config: { responseMimeType: "application/json" } 
         });
 
         return JSON.parse(resposta.text);
     } catch (error) {
         console.error("Erro na comunicação com o Gemini:", error);
+        /* Fazer uma resposta para o usuario */
         return { erro: true };
     }
 }
@@ -91,6 +92,7 @@ async function processarFila() {
 
             if (dadosExtraidos.erro) {
                 console.log(`[BOT] Resposta para ${numeroUsuario}: "Desculpe, não consegui entender o valor ou o produto. Pode repetir?"`);
+                /* client.sendMessage(`${numeroUsuario}@c.us`, "Desculpe, não consegui entender o valor ou o produto. Pode repetir? 🧐"); */
                 return;
             }
 
@@ -116,21 +118,24 @@ async function processarFila() {
         switch (acao){
             case "cadastrar":
                 // CHAMA O MÓDULO FINANCEIRO (Gravação segura no JSON isolado)
-                await cadastrarCompraParcelada(numeroUsuario, produto, valor, parcelas);
+                cadastrarCompraParcelada(numeroUsuario, produto, valor, parcelas);
                 console.log(`[SUCESSO] Lançamento de "${produto}" (${parcelas}x) salvo para o usuário ${numeroUsuario}!`);
                 console.log(`[BOT] Resposta para ${numeroUsuario}: "Lançamento de ${produto} cadastrado com sucesso!"`);
+                /* client.sendMessage(`${numeroUsuario}@c.us`, `✅ Lançamento de *${produto}* (${parcelas}x) cadastrado com sucesso!`); */
                 break;
 
             case "consulta":
                 const mesParaConsulta = dadosExtraidos ? dadosExtraidos.mes : null;
-                const resultadoHistorico = await consultar(numeroUsuario, mesParaConsulta);
-                console.log(`[BOT] Resposta de histórico: `, resultadoHistorico); 
+                const resultadoHistorico = consultar(numeroUsuario, mesParaConsulta);
+                console.log(`[BOT] Resposta de histórico: `, resultadoHistorico);
+                /* client.sendMessage(`${numeroUsuario}@c.us`, resultadoHistorico); */
                 break;
 
             case "excluir":
                 const excluirProduto= dadosExtraidos ? dadosExtraidos.produto : null;
-                const resultadoExcluir = await excluir(numeroUsuario, excluirProduto);
-                console.log(`[BOT] Resposta de histórico: `, resultadoExcluir); 
+                const resultadoExcluir = excluir(numeroUsuario, excluirProduto);
+                console.log(`[BOT] Resposta de histórico: `, resultadoExcluir);
+                /* client.sendMessage(`${numeroUsuario}@c.us`, resultadoExcluir); */
                 break;
         }
 
@@ -158,15 +163,77 @@ function quandoChegarMensagemDoWhatsApp(eventoMensagem) {
     processarFila();
 }
 
+setTimeout(() => {
+    quandoChegarMensagemDoWhatsApp({ de: "5511999999999", texto: "Comprei um sofa em 3 vzs de 900" });
+    quandoChegarMensagemDoWhatsApp({ de: "5511999999999", texto: "me mostre  minhas compras do mes 8" });
+    quandoChegarMensagemDoWhatsApp({ de: "5511999999999", texto: "remover sofa" });
+}, 1000);
+
+// ============================================================================
+// CONEXÃO REAL COM O WHATSAPP
+// ============================================================================
+/* const { Client, LocalAuth } = require('whatsapp-web.js');
+const qrcode = require('qrcode-terminal');
+
+console.log("\n=== INICIALIZANDO SERVIDOR DO BOT ===");
+console.log("[WHATSAPP] Aguardando inicialização do navegador do WhatsApp...");
+
+// Criando a instância do cliente do WhatsApp
+const client = new Client({
+    authStrategy: new LocalAuth(), // Salva a sessão para você não ter que ler o QR Code toda vez
+    puppeteer: {
+        headless: true, // Roda em segundo plano sem abrir uma janela de navegador na sua tela
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+    }
+});
+
+// 1. Gerador de QR Code no Terminal
+client.on('qr', (qr) => {
+    console.log('\n[WHATSAPP] 🚨 QR CODE GERADO! Escaneie com o seu aplicativo do WhatsApp:');
+    qrcode.generate(qr, { small: true });
+});
+
+// 2. Evento de Conexão com Sucesso
+client.on('ready', () => {
+    console.log('\n[WHATSAPP] ✅ Tudo pronto! Bot de finanças conectado e escutando mensagens!');
+}); */
+
+/* // 3. CAPTURA DE MENSAGENS REAIS
+client.on('message_create', async (msg) => {
+    // 🛡️ TRAVA 1: Ignora mensagens que o próprio bot enviar
+    if (msg.fromMe) return;
+
+    // 🛡️ TRAVA 2: Ignora grupos
+    if (msg.from.includes('@g.us')) return;
+
+    // 🛡️ TRAVA 3: CORREÇÃO - Ignora mensagens antigas da sincronização inicial
+    // Se o tempo da mensagem for menor do que o momento em que o bot iniciou, ignora.
+    const tempoMensagem = msg.timestamp * 1000; // Converte segundos para milissegundos
+    const agora = Date.now();
+    
+    // Se a mensagem tiver mais de 10 segundos de idade, o bot ignora (é histórico antigo)
+    if (agora - tempoMensagem > 10000) {
+        return; 
+    }
+
+    // Pega o número limpo do usuário (e aceita o formato @lid que o WhatsApp usa para canais/novas contas)
+    const numeroLimpo = msg.from.replace('@c.us', '').replace('@lid', '');
+
+    // Envia a mensagem real recebida para a sua fila existente!
+    quandoChegarMensagemDoWhatsApp({
+        de: numeroLimpo,
+        texto: msg.body
+    });
+});
+
+// Inicializa o bot do WhatsApp
+client.initialize(); */
+
+
 // ============================================================================
 // ÁREA DE TESTES (SIMULAÇÃO DE ENTRADA DO WHATSAPP)
 // ============================================================================
-console.log("=== INICIALIZANDO SERVIDOR DO BOT ===");
+/* console.log("=== INICIALIZANDO SERVIDOR DO BOT ==="); */
 
 // Simulando mensagens chegando exatamente juntas ou fora de ordem
 // Se estiver SEM IA (Chave padrão), teste usando o formato com barras: "Item | Valor | Parcelas"
-setTimeout(() => {
-    quandoChegarMensagemDoWhatsApp({ de: "5511999999999", texto: "Comprei um sofa em 3 vzs de 900" });
-    quandoChegarMensagemDoWhatsApp({ de: "5511999999999", texto: "me mostre o mês de agosto" });
-    quandoChegarMensagemDoWhatsApp({ de: "5511999999999", texto: "remover sofa" });
-}, 1000);

@@ -44,35 +44,65 @@ function excluir(numeroUsuario, produtoDeletar){
 }
 
 
-function consultar(numeroUsuario, mes){
+function consultar(numeroUsuario, mesConsulta) {
     const caminhoArquivo = path.join(PASTA_USUARIOS, `${numeroUsuario}.json`);
     
-    if (fs.existsSync(caminhoArquivo)) {
-        const conteudoArquivo = fs.readFileSync(caminhoArquivo, 'utf-8');
-        dadosUsuario = JSON.parse(conteudoArquivo);
-        
-        // Se não passou o mês, devolve o histórico completo (todos os meses)
-        if(!mes){
-                return dadosUsuario.meses;
-        }
-        
-        // 🚨 AJUSTE AQUI: Formata o número do mês recebido para bater com a chave do banco (ex: 7 vira "07")
-        const mesFormatado = String(mes).padStart(2, '0');
-        const anoAtual = new Date().getFullYear(); // Pega o ano atual (ex: 2026)
-        const chaveProcurada = `${anoAtual}-${mesFormatado}`; // Monta "2026-07"
-
-        // Agora o loop compara a chave certa!
-        for (let [chave, valor] of Object.entries(dadosUsuario.meses)) {
-            if (chaveProcurada == chave){
-                return valor;
-            }
-        }
-        return "Este mês não possui dados";
-    } else {
-        return "O usuário ainda não fez nenhum registro de dados";
+    // 1. Checa se o usuário tem histórico
+    if (!fs.existsSync(caminhoArquivo)) {
+        return "Você ainda não possui nenhuma compra cadastrada! ❌";
     }
-}
+    
+    const conteudoArquivo = fs.readFileSync(caminhoArquivo, 'utf-8');
+    const dadosUsuario = JSON.parse(conteudoArquivo);
+    
+    // Se a pasta 'meses' estiver vazia
+    if (Object.keys(dadosUsuario.meses).length === 0) {
+        return "Seu histórico de compras está vazio! 📑";
+    }
 
+    let mensagemFormatada = `📊 *HISTÓRICO DE COMPRAS - ${dadosUsuario.nome}*\n\n`;
+
+    // 2. CASO A: Consulta de um mês específico (Corrigido o nome da variável para mesConsulta)
+    if (mesConsulta) {
+        const mesAlvo = String(mesConsulta).trim(); 
+        
+        // Procura se existe alguma chave que inclua esse número
+        const chaveEncontrada = Object.keys(dadosUsuario.meses).find(chave => {
+            const mesFormatado = mesAlvo.padStart(2, '0'); 
+            return chave.includes(mesFormatado);
+        });
+
+        // Se achou a chave correta (ex: encontrou "2026-08")
+        if (chaveEncontrada) {
+            const comprasDoMes = dadosUsuario.meses[chaveEncontrada];
+            
+            mensagemFormatada += `📅 *Mês: ${chaveEncontrada}*\n`;
+            for (let compra of comprasDoMes) {
+                mensagemFormatada += `🔹 *Produto:* ${compra.produto}\n`;
+                mensagemFormatada += `   *Valor da Parcela:* R$ ${compra.valorParcela.toFixed(2)}\n`;
+                mensagemFormatada += `   *Parcela:* ${compra.parcelaAtual} de ${compra.totalParcelas}\n`;
+                mensagemFormatada += `----------------------------\n`;
+            }
+            return mensagemFormatada;
+        } else {
+            return `Não encontrei nenhuma compra para o mês ${mesConsulta}. 🤷‍♂️`;
+        }
+    } 
+
+    // 3. CASO B: Consulta Geral (Se o usuário não disser o mês, mostra tudo)
+    for (let [mes, listaDeCompras] of Object.entries(dadosUsuario.meses)) {
+        mensagemFormatada += `📅 *Mês: ${mes}*\n`;
+        
+        for (let compra of listaDeCompras) {
+            mensagemFormatada += `🔹 *Produto:* ${compra.produto}\n`;
+            mensagemFormatada += `   *Valor da Parcela:* R$ ${compra.valorParcela.toFixed(2)}\n`;
+            mensagemFormatada += `   *Parcela:* ${compra.parcelaAtual} de ${compra.totalParcelas}\n`;
+            mensagemFormatada += `----------------------------\n`;
+        }
+    }
+    
+    return mensagemFormatada;
+}
 
 function cadastrarCompraParcelada(numeroUsuario, produto, valorTotal, parcelas) {
     const caminhoArquivo = path.join(PASTA_USUARIOS, `${numeroUsuario}.json`);
@@ -129,12 +159,3 @@ function cadastrarCompraParcelada(numeroUsuario, produto, valorTotal, parcelas) 
 module.exports = { cadastrarCompraParcelada, consultar, excluir };
 
 
-/* // ==========================================
-// TESTANDO A FUNÇÃO (Para você rodar no terminal)
-// ==========================================
-
-// Simula o João comprando um Sofá de R$ 900 em 3 parcelas
-cadastrarCompraParcelada("5511999999999", "Sofá", 900, 3);
-
-// Simula o mesmo João adicionando uma Internet de R$ 120 de 1 parcela (à vista) no mesmo arquivo
-cadastrarCompraParcelada("5511999999999", "Internet", 120, 1); */
