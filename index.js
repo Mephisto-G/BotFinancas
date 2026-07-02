@@ -1,5 +1,6 @@
 const { cadastrarCompraParcelada } = require('./financeiro');
 const { consultar } = require('./financeiro');
+const { excluir } = require('./financeiro');
 
 // ============================================================================
 // CONFIGURAÇÃO DA IA (GEMINI)
@@ -40,6 +41,11 @@ async function interpretarMensagemComIA(textoDoUsuario) {
             4.2 Se ele informar um mês específico (ex: "mês de maio" ou "mês 5"), retorne o número do mês como número puro: 
                 { "acao": "consulta", "mes": 5 }
             4.3 Se ele pedir o histórico do "mês atual" ou "desse mês", use a data fornecida no topo (${dataAtual}) para descobrir o número do mês atual e retorne-o como número puro (ex: 7).
+
+        Regras importantes para EXCLUIR HISTÓRICO:
+        4. Se o usuário manifestar o desejo de apagar, deletar ou excluir um gasto, identifique o nome do item e retorne o seguinte formato:
+            { "acao": "excluir", "produto": string }
+    
 
         Mensagem do usuário: "${textoDoUsuario}"
     `;
@@ -120,7 +126,14 @@ async function processarFila() {
                 const resultadoHistorico = await consultar(numeroUsuario, mesParaConsulta);
                 console.log(`[BOT] Resposta de histórico: `, resultadoHistorico); 
                 break;
-                }
+
+            case "excluir":
+                const excluirProduto= dadosExtraidos ? dadosExtraidos.produto : null;
+                const resultadoExcluir = await excluir(numeroUsuario, excluirProduto);
+                console.log(`[BOT] Resposta de histórico: `, resultadoExcluir); 
+                break;
+        }
+
     } catch (erro) {
         console.error(`[ERRO] Falha crítica ao processar a mensagem de ${numeroUsuario}:`, erro);
     } finally {
@@ -155,4 +168,5 @@ console.log("=== INICIALIZANDO SERVIDOR DO BOT ===");
 setTimeout(() => {
     quandoChegarMensagemDoWhatsApp({ de: "5511999999999", texto: "Comprei um sofa em 3 vzs de 900" });
     quandoChegarMensagemDoWhatsApp({ de: "5511999999999", texto: "me mostre o mês de agosto" });
+    quandoChegarMensagemDoWhatsApp({ de: "5511999999999", texto: "remover sofa" });
 }, 1000);

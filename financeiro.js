@@ -15,10 +15,38 @@ if (!fs.existsSync(PASTA_USUARIOS)) {
  * @param {number} parcelas - Quantidade de parcelas
  */
 
+function excluir(numeroUsuario, produtoDeletar){
+    const caminhoArquivo = path.join(PASTA_USUARIOS, `${numeroUsuario}.json`);
+    
+    if (fs.existsSync(caminhoArquivo)) {
+        const conteudoArquivo = fs.readFileSync(caminhoArquivo, 'utf-8');
+        const dadosUsuario = JSON.parse(conteudoArquivo);
+        
+        for (let chaveMes of Object.keys(dadosUsuario.meses)) {
+            
+            //Filtrar a lista  mantendo apenas os produtos cujo nome seja diferente do produto que quero deletar
+            dadosUsuario.meses[chaveMes] = dadosUsuario.meses[chaveMes].filter(compra => {
+                return compra.produto.toLowerCase() !== produtoDeletar.toLowerCase();
+            });
+
+            // 3. Limpeza se o mes ficar vazio
+            if (dadosUsuario.meses[chaveMes].length === 0) {
+                delete dadosUsuario.meses[chaveMes];
+            }
+        }
+        // Salvando
+        fs.writeFileSync(caminhoArquivo, JSON.stringify(dadosUsuario, null, 2), 'utf-8');
+        return(`[SUCESSO] Se o produto "${produtoDeletar}" existia, ele foi removido do histórico.`);
+        
+    } else {
+        return("Usuário não encontrado.");
+    }
+}
+
+
 function consultar(numeroUsuario, mes){
     const caminhoArquivo = path.join(PASTA_USUARIOS, `${numeroUsuario}.json`);
     
-    let dadosUsuario = { nome: numeroUsuario, meses: {} };
     if (fs.existsSync(caminhoArquivo)) {
         const conteudoArquivo = fs.readFileSync(caminhoArquivo, 'utf-8');
         dadosUsuario = JSON.parse(conteudoArquivo);
@@ -98,7 +126,7 @@ function cadastrarCompraParcelada(numeroUsuario, produto, valorTotal, parcelas) 
     console.log(`Sucesso: Compra de "${produto}" em ${parcelas}x salva para o usuário ${numeroUsuario}!`);
 }
 
-module.exports = { cadastrarCompraParcelada, consultar };
+module.exports = { cadastrarCompraParcelada, consultar, excluir };
 
 
 /* // ==========================================
