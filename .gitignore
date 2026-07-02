@@ -1,0 +1,7 @@
+tempCodeRunnerFile.js
+node_modules/
+usuarios/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env

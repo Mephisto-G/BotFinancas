@@ -14,6 +14,38 @@ if (!fs.existsSync(PASTA_USUARIOS)) {
  * @param {number} valorTotal - Valor total da compra
  * @param {number} parcelas - Quantidade de parcelas
  */
+
+function consultar(numeroUsuario, mes){
+    const caminhoArquivo = path.join(PASTA_USUARIOS, `${numeroUsuario}.json`);
+    
+    let dadosUsuario = { nome: numeroUsuario, meses: {} };
+    if (fs.existsSync(caminhoArquivo)) {
+        const conteudoArquivo = fs.readFileSync(caminhoArquivo, 'utf-8');
+        dadosUsuario = JSON.parse(conteudoArquivo);
+        
+        // Se não passou o mês, devolve o histórico completo (todos os meses)
+        if(!mes){
+                return dadosUsuario.meses;
+        }
+        
+        // 🚨 AJUSTE AQUI: Formata o número do mês recebido para bater com a chave do banco (ex: 7 vira "07")
+        const mesFormatado = String(mes).padStart(2, '0');
+        const anoAtual = new Date().getFullYear(); // Pega o ano atual (ex: 2026)
+        const chaveProcurada = `${anoAtual}-${mesFormatado}`; // Monta "2026-07"
+
+        // Agora o loop compara a chave certa!
+        for (let [chave, valor] of Object.entries(dadosUsuario.meses)) {
+            if (chaveProcurada == chave){
+                return valor;
+            }
+        }
+        return "Este mês não possui dados";
+    } else {
+        return "O usuário ainda não fez nenhum registro de dados";
+    }
+}
+
+
 function cadastrarCompraParcelada(numeroUsuario, produto, valorTotal, parcelas) {
     const caminhoArquivo = path.join(PASTA_USUARIOS, `${numeroUsuario}.json`);
     
@@ -66,7 +98,7 @@ function cadastrarCompraParcelada(numeroUsuario, produto, valorTotal, parcelas) 
     console.log(`Sucesso: Compra de "${produto}" em ${parcelas}x salva para o usuário ${numeroUsuario}!`);
 }
 
-module.exports = { cadastrarCompraParcelada };
+module.exports = { cadastrarCompraParcelada, consultar };
 
 
 /* // ==========================================
