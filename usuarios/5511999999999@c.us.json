@@ -1,0 +1,21 @@
+{
+  "nome": "5511999999999@c.us",
+  "meses": {
+    "2026-07": [
+      {
+        "produto": "porsche",
+        "valorParcela": 100000,
+        "parcelaAtual": 1,
+        "totalParcelas": 2
+      }
+    ],
+    "2026-08": [
+      {
+        "produto": "porsche",
+        "valorParcela": 100000,
+        "parcelaAtual": 2,
+        "totalParcelas": 2
+      }
+    ]
+  }
+}
