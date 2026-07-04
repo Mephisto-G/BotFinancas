@@ -145,9 +145,21 @@ async function processarFila() {
                 parcelas = partes[2] ? Number(partes[2].trim()) : 1; 
                 acao = "cadastrar"; 
             }
-            else {
-                console.log(`[BOT] Resposta para ${numeroUsuario}: "Não consegui processar o comando manual."`);
-                return;
+           else {
+                console.log(`[BOT] Comando manual inválido de ${numeroUsuario}. Enviando erro...`);
+                
+                // Texto explicativo para ajudar o usuário a não errar de novo
+                const mensagemAjuda = `❌ Não consegui processar o seu comando manual.\n\n` +
+                                      `💡 *Use um dos formatos abaixo se o erro persistir:*\n` +
+                                      `• Cadastrar: *Produto | Valor | Parcelas*\n` +
+                                      `• Consultar: *consulta | Mês*\n` +
+                                      `• Excluir: *excluir | Nome do Produto*\n` +
+                                      `• Calcular: *calcular | Mês*`;
+
+                // Envia de forma assíncrona esperando o WhatsApp confirmar
+                await client.sendMessage(numeroUsuario, mensagemAjuda);
+                
+                return; // Encerra o processo desta mensagem atual com segurança
             }
         }
             
@@ -190,7 +202,7 @@ async function processarFila() {
 // ============================================================================
 // CONEXÃO REAL COM O WHATSAPP
 // ============================================================================
-const { Client, LocalAuth } = require('whatsapp-web.js');
+const { Client, LocalAuth} = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 
 console.log("\n=== INICIALIZANDO SERVIDOR DO BOT ===");
@@ -200,7 +212,12 @@ const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        args: [
+            '--no-sandbox', 
+            '--disable-setuid-sandbox',
+            '--disable-extensions', // Desativa extensões para carregar mais rápido
+            '--unhandled-rejections=strict'
+        ]
     }
 });
 
