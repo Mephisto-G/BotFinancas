@@ -212,11 +212,12 @@ const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
         headless: true,
+        executablePath: process.platform === 'linux' ? '/usr/bin/chromium-browser' : undefined,
         args: [
             '--no-sandbox', 
             '--disable-setuid-sandbox',
-            '--disable-extensions', // Desativa extensões para carregar mais rápido
-            '--unhandled-rejections=strict'
+            '--disable-extensions',
+            '--disable-dev-shm-usage'
         ]
     }
 });
