@@ -244,9 +244,10 @@ client.on('message_create', async (msg) => {
         return; 
     }
 
-    // 🟢 CORREÇÃO CRÍTICA: Passando o msg.from completo (com @c.us) para evitar problemas no envio posterior
+   // Passando o msg.from completo (com @c.us) para evitar problemas no envio posterior
     quandoChegarMensagemDoWhatsApp({
         from: msg.from,
+        
         body: msg.body
     });
 });
