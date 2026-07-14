@@ -2,13 +2,14 @@ const { cadastrarCompraParcelada } = require('./financeiro');
 const { consultar } = require('./financeiro');
 const { excluir } = require('./financeiro');
 const { calcular } = require('./financeiro');
-
+const fs = require('fs');
+const ffmpeg = require('fluent-ffmpeg');
 // ============================================================================
 // CONFIGURAÇÃO DA IA (GEMINI)
 // ============================================================================
 require('dotenv').config()
 const { GoogleGenAI } = require('@google/genai');
-const API_KEY_GEMINI = process.env.GEMINI_API_KEY; 
+const API_KEY_GEMINI = process.env.GEMINI_API_KEY;
 const ai = new GoogleGenAI({ apiKey: API_KEY_GEMINI });
 
 // ============================================================================
@@ -60,9 +61,9 @@ async function interpretarMensagemComIA(textoDoUsuario) {
 
     try {
         const resposta = await ai.models.generateContent({
-            model: 'gemini-3.1-flash-lite', 
+            model: 'gemini-3.1-flash-lite',
             contents: prompt,
-            config: { responseMimeType: "application/json" } 
+            config: { responseMimeType: "application/json" }
         });
 
         return JSON.parse(resposta.text);
@@ -77,10 +78,10 @@ async function interpretarMensagemComIA(textoDoUsuario) {
  */
 function quandoChegarMensagemDoWhatsApp(eventoMensagem) {
     console.log(`[WHATSAPP] Nova mensagem recebida de ${eventoMensagem.from}`);
-    
+
     // Insere a mensagem no final do array da fila
     filaDeMensagens.push(eventoMensagem);
-    
+
     // Dispara a tentativa de processamento
     processarFila();
 }
@@ -98,15 +99,15 @@ async function processarFila() {
 
     try {
         console.log(`\n[FILA] Processando mensagem de ${numeroUsuario}...`);
-        let produto, valor, parcelas, acao, mes; 
-        let dadosExtraidos = null; 
+        let produto, valor, parcelas, acao, mes;
+        let dadosExtraidos = null;
         let modoSegurancaAtivado = false;
 
         // 1. TENTA USAR A IA SE A CHAVE EXISTIR
         if (API_KEY_GEMINI !== "SUA_CHAVE_DA_API_AQUI") {
             try {
                 dadosExtraidos = await interpretarMensagemComIA(mensagemAtual.body);
-                
+
                 if (dadosExtraidos.erro) {
                     modoSegurancaAtivado = true;
                 } else {
@@ -125,7 +126,7 @@ async function processarFila() {
 
         // 2. PLANO B: SE A IA FALHOU OU NÃO EXISTE, SEPARA POR BARRAS (|)
         if (modoSegurancaAtivado) {
-            const partes = mensagemAtual.body.split('|'); 
+            const partes = mensagemAtual.body.split('|');
 
             if (partes[0].trim().toLowerCase() === 'excluir' || partes[0].trim().toLowerCase() === 'remover') {
                 acao = "excluir";
@@ -133,40 +134,40 @@ async function processarFila() {
             }
             else if (partes[0].trim().toLowerCase() === 'consulta' || partes[0].trim().toLowerCase() === 'histórico') {
                 acao = "consulta";
-                mes = partes[1] ? Number(partes[1].trim()) : null; 
+                mes = partes[1] ? Number(partes[1].trim()) : null;
             }
             else if (partes[0].trim().toLowerCase() === 'calcule' || partes[0].trim().toLowerCase() === 'calcular') {
                 acao = "calcular";
-                mes = partes[1] ? Number(partes[1].trim()) : null; 
+                mes = partes[1] ? Number(partes[1].trim()) : null;
             }
             else if (partes.length >= 2) {
                 produto = partes[0].trim();
                 valor = Number(partes[1].trim());
-                parcelas = partes[2] ? Number(partes[2].trim()) : 1; 
-                acao = "cadastrar"; 
+                parcelas = partes[2] ? Number(partes[2].trim()) : 1;
+                acao = "cadastrar";
             }
-           else {
+            else {
                 console.log(`[BOT] Comando manual inválido de ${numeroUsuario}. Enviando erro...`);
-                
+
                 // Texto explicativo para ajudar o usuário a não errar de novo
                 const mensagemAjuda = `❌ Não consegui processar o seu comando manual.\n\n` +
-                                      `💡 *Use um dos formatos abaixo se o erro persistir:*\n` +
-                                      `• Cadastrar: *Produto | Valor | Parcelas*\n` +
-                                      `• Consultar: *consulta | Mês*\n` +
-                                      `• Excluir: *excluir | Nome do Produto*\n` +
-                                      `• Calcular: *calcular | Mês*`;
+                    `💡 *Use um dos formatos abaixo se o erro persistir:*\n` +
+                    `• Cadastrar: *Produto | Valor | Parcelas*\n` +
+                    `• Consultar: *consulta | Mês*\n` +
+                    `• Excluir: *excluir | Nome do Produto*\n` +
+                    `• Calcular: *calcular | Mês*`;
 
                 // Envia de forma assíncrona esperando o WhatsApp confirmar
                 await client.sendMessage(numeroUsuario, mensagemAjuda);
-                
+
                 return; // Encerra o processo desta mensagem atual com segurança
             }
         }
-            
+
         // Extrai apenas o número limpo para passar às funções do sistema de arquivos de dados, se necessário
         const numeroLimpo = numeroUsuario.replace('@c.us', '').replace('@lid', '');
 
-        switch (acao){
+        switch (acao) {
             case "cadastrar":
                 cadastrarCompraParcelada(numeroLimpo, produto, valor, parcelas);
                 await client.sendMessage(numeroUsuario, `✅ Lançamento de *${produto}* (${parcelas}x) cadastrado com sucesso!`);
@@ -202,7 +203,7 @@ async function processarFila() {
 // ============================================================================
 // CONEXÃO REAL COM O WHATSAPP
 // ============================================================================
-const { Client, LocalAuth} = require('whatsapp-web.js');
+const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 
 console.log("\n=== INICIALIZANDO SERVIDOR DO BOT ===");
@@ -212,12 +213,15 @@ const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
         headless: true,
-        executablePath: process.platform === 'linux' ? '/usr/bin/chromium-browser' : undefined,
+        executablePath: process.platform === 'linux' ? '/usr/bin/chromium' : undefined,
         args: [
-            '--no-sandbox', 
+            '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-extensions',
-            '--disable-dev-shm-usage'
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--disable-software-rasterizer',
+            '--headless=new'
         ]
     }
 });
@@ -235,21 +239,123 @@ client.on('ready', () => {
 
 // 3. CAPTURA DE MENSAGENS REAIS
 client.on('message_create', async (msg) => {
+    // Ignora mensagens do próprio bot e de grupos
     if (msg.fromMe) return;
     if (msg.from.includes('@g.us')) return;
 
+    // Ignora mensagens antigas (mais de 10 segundos)
     const tempoMensagem = msg.timestamp * 1000;
     const agora = Date.now();
-    
     if (agora - tempoMensagem > 10000) {
-        return; 
+        return;
     }
 
-    // 🟢 CORREÇÃO CRÍTICA: Passando o msg.from completo (com @c.us) para evitar problemas no envio posterior
-    quandoChegarMensagemDoWhatsApp({
-        from: msg.from,
-        body: msg.body
-    });
+    // ==========================================
+    // FLUXO 1: SE A MENSAGEM FOR UM ÁUDIO
+    // ==========================================
+    if (msg.hasMedia && (msg.type === 'audio' || msg.type === 'ptt')) {
+        const inputPath = `./temp_${msg.id.id}.ogg`;
+        const outputPath = `./temp_${msg.id.id}.mp3`;
+        let uploadResult = null;
+
+        // Função interna para limpar os arquivos locais
+        const limparArquivosLocais = () => {
+            try {
+                if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
+                if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+                console.log(`[SISTEMA] Arquivos locais limpos com sucesso.`);
+            } catch (errLimpeza) {
+                console.error('Erro ao apagar arquivos temporários:', errLimpeza);
+            }
+        };
+
+        try {
+            await msg.reply('Ouvindo seu áudio, só um minutinho...');
+
+            const media = await msg.downloadMedia();
+            fs.writeFileSync(inputPath, media.data, 'base64');
+
+            ffmpeg(inputPath)
+                .toFormat('mp3')
+                .on('end', async () => {
+                    try {
+                        // 1. Faz o upload do áudio para a API do Gemini
+                        uploadResult = await ai.files.upload({
+                            file: outputPath,
+                            mimeType: 'audio/mp3',
+                        });
+
+                        // 2. O Gemini apenas transcreve usando o formato correto
+                        const transcricao = await ai.models.generateContent({
+                            model: 'gemini-3.1-flash-lite',
+                            contents: [
+                                {
+                                    fileData: {
+                                        fileUri: uploadResult.uri,
+                                        mimeType: uploadResult.mimeType
+                                    }
+                                },
+                                { text: "Transcreva exatamente o que foi dito neste áudio, sem adicionar nenhuma saudação, comentário, explicação ou pontuação extra. Apenas o texto falado puro." }
+                            ]
+                        });
+
+                        const textoDoAudio = transcricao.text.trim();
+                        console.log(`[Áudio Transcrito]: ${textoDoAudio}`);
+
+                        // 3. Deleta o arquivo da nuvem do Google (File API)
+                        await ai.files.delete({ name: uploadResult.name });
+
+                        // 4. Limpa os arquivos locais na máquina
+                        limparArquivosLocais();
+
+                        if (textoDoAudio) {
+                            // Insere a transcrição na fila
+                            filaDeMensagens.push({
+                                from: msg.from,
+                                body: textoDoAudio
+                            });
+
+                            // Executa o processamento
+                            processarFila();
+                        } else {
+                            await client.sendMessage(msg.from, "❌ Não consegui extrair nenhuma mensagem falada deste áudio.");
+                        }
+
+                    } catch (apiError) {
+                        console.error('Erro no processamento do áudio/API:', apiError);
+                        await client.sendMessage(msg.from, '❌ Tive um problema ao processar seu áudio.');
+                        
+                        // Garante a limpeza em caso de falha após o início do processamento do Gemini
+                        if (uploadResult) {
+                            try { await ai.files.delete({ name: uploadResult.name }); } catch(e){}
+                        }
+                        limparArquivosLocais();
+                    }
+                })
+                .on('error', (err) => {
+                    console.error('Erro na conversão do FFmpeg:', err);
+                    client.sendMessage(msg.from, '❌ Erro ao converter o formato do seu áudio.');
+                    
+                    // Garante a limpeza se o FFmpeg quebrar
+                    limparArquivosLocais();
+                })
+                .save(outputPath);
+
+        } catch (error) {
+            console.error('Erro geral no fluxo de áudio:', error);
+            msg.reply('❌ Ocorreu um erro ao processar sua mensagem de voz.');
+            limparArquivosLocais();
+        }
+    } 
+    // ==========================================
+    // FLUXO 2: SE A MENSAGEM FOR DE TEXTO
+    // ==========================================
+    else if (msg.type === 'chat') {
+        quandoChegarMensagemDoWhatsApp({
+            from: msg.from,
+            body: msg.body
+        });
+    }
 });
 
 // Inicializa o bot do WhatsApp

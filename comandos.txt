@@ -1,0 +1,5 @@
+pm2 stop bot-financas
+pm2 start bot-financas
+pm2 status
+pm2 logs bot-financas
+pm2 restart bot-financas
