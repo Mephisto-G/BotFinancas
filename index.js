@@ -360,3 +360,4 @@ client.on('message_create', async (msg) => {
 
 // Inicializa o bot do WhatsApp
 client.initialize();
+
