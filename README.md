@@ -83,10 +83,8 @@ bot-financas/
       npm install
      
 3.**Configure as variáveis de ambiente (se necessário):**
-   
-    ``` text
-     Adicione credenciais da API do WhatsApp conforme documentação
-     ```
+
+    Adicione credenciais da API do WhatsApp conforme documentação
 4. **Execute o bot:**
    
     ``` text
