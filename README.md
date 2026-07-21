@@ -79,9 +79,8 @@ bot-financas/
      cd BotFinancas
    ```
 1. **Instale as dependências:**
-     ```bash
-       npm install
-      ```
+     
+      npm install
 3.**Configure as variáveis de ambiente (se necessário):**
     ``` text
      Adicione credenciais da API do WhatsApp conforme documentação
