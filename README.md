@@ -26,7 +26,7 @@ Sistema MVP de controle financeiro que elimina a necessidade de aplicativos ou p
 - Cálculo automático de parcelas com projeção temporal
 - Suporte a compras que ultrapassam o ano civil (virada de ano automática)
 
-###  **Arquitetura de Dados Inovadora**
+###  **Arquitetura de Dados**
 - **Isolamento total por usuário**: Cada usuário possui seu próprio arquivo `.json` (nomeado pelo número de telefone)
 - **Privacidade garantida**: Dados nunca se misturam entre usuários
 - **Performance otimizada**: Arquivos menores que 50KB garantem leitura/escrita instantânea via `JSON.parse()` e `JSON.stringify()`
@@ -36,7 +36,7 @@ Sistema MVP de controle financeiro que elimina a necessidade de aplicativos ou p
 - **Processamento sequencial**: Mensagens são processadas uma por uma usando array de fila e variável de controle `botEstaOcupado`
 - **Integridade dos dados**: Garante que operações de escrita no JSON nunca se sobreponham
 
-### **Motor de Datas Sofisticado**
+### **Motor de Datas**
 - Uso do objeto nativo `Date()` do JavaScript com método `.setMonth()`
 - Agrupamento de gastos por "gavetas temporais" no formato `ANO-MÊS` (ex: `"2026-07"`)
 - Projeção automática de meses futuros em loops `for`
@@ -47,7 +47,7 @@ Sistema MVP de controle financeiro que elimina a necessidade de aplicativos ou p
 
 ---
 
-## ecnologias Utilizadas
+## Tecnologias Utilizadas
 
 | Categoria | Tecnologias |
 | :--- | :--- |
@@ -60,14 +60,15 @@ Sistema MVP de controle financeiro que elimina a necessidade de aplicativos ou p
 ---
 
 ## Estrutura do Projeto
+```text
 bot-financas/
-├── package.json # Dependências e scripts do projeto
-├── index.js # Servidor principal e conexão com WhatsApp
-├── financeiro.js # Regras de negócio: parcelas e gerenciamento do JSON
-└── usuarios/ # Diretório de armazenamento isolado por usuário
-├── 5511999999999.json
-├── 5511888888888.json
-── historico_2026.json
+  ├── package.json       (Dependências e scripts do projeto)
+  ├── financeiro.js      (Regras de negócio: parcelas e gerenciamento do JSON)
+  ├── index.js           (Servidor principal e conexão com o WhatsApp)
+  └── usuarios/          (O armário onde os arquivos são gravados)
+       ├── 5511999999999.json
+       └── 5511888888888.json
+```
 ---
 
 ## 🔧 Como Executar
