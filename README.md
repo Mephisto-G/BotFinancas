@@ -83,18 +83,23 @@ bot-financas/
 3.**Configure as variáveis de ambiente (se necessário):**
      Adicione credenciais da API do WhatsApp conforme documentação
 4. **Execute o bot:**
+
      npm start
 5. **Escaneie o QR Code:**
    O bot irá gerar um QR Code no terminal para vincular seu WhatsApp
 
- ## Como Usar
+## Como Usar
 Envie mensagens no seguinte formato para o bot:
-     <Descrição> <Valor Total> <Número de Parcelas>
+    ``` text
+         <Descrição> <Valor Total> <Número de Parcelas>
+    ```
 Exemplos:
+
       Sofá 900 3 → Sofá em 3x de R$ 300,00
       Notebook 3600 12 → Notebook em 12x de R$ 300,00
       Mercado 450 1 → Mercado à vista R$ 450,00
 O bot responderá com:
+
       Confirmação do lançamento
       Datas de vencimento de cada parcela
       Valor de cada parcela
