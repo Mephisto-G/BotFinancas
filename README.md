@@ -81,13 +81,17 @@ bot-financas/
    
        npm install
 3.**Configure as variáveis de ambiente (se necessário):**
+    ``` text
      Adicione credenciais da API do WhatsApp conforme documentação
+     ```
 4. **Execute o bot:**
-
+    ``` text
      npm start
-5. **Escaneie o QR Code:**
+      ```
+6. **Escaneie o QR Code:**
+   ``` text
    O bot irá gerar um QR Code no terminal para vincular seu WhatsApp
-
+  ```
 ## Como Usar
 Envie mensagens no seguinte formato para o bot:
     ``` text
