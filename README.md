@@ -77,7 +77,6 @@ bot-financas/
    ```bash
      git clone https://github.com/Mephisto-G/BotFinancas.git
      cd BotFinancas
-   ```
 1. **Instale as dependências:**
      
       npm install
@@ -91,13 +90,13 @@ bot-financas/
       ```
 6. **Escaneie o QR Code:**
    ``` text
-   O bot irá gerar um QR Code no terminal para vincular seu WhatsApp
-  ```
+     O bot irá gerar um QR Code no terminal para vincular seu WhatsApp
+   
 ## Como Usar
 Envie mensagens no seguinte formato para o bot:
     ``` text
          <Descrição> <Valor Total> <Número de Parcelas>
-    ```
+
 Exemplos:
 
       Sofá 900 3 → Sofá em 3x de R$ 300,00
