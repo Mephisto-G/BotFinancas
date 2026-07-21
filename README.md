@@ -75,11 +75,13 @@ bot-financas/
 
 1. **Clone o repositório:**
    ```bash
-   git clone https://github.com/Mephisto-G/BotFinancas.git
-   cd BotFinancas
+     git clone https://github.com/Mephisto-G/BotFinancas.git
+     cd BotFinancas
+   ```
 1. **Instale as dependências:**
-   
+     ```bash
        npm install
+      ```
 3.**Configure as variáveis de ambiente (se necessário):**
     ``` text
      Adicione credenciais da API do WhatsApp conforme documentação
