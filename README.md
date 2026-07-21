@@ -71,14 +71,15 @@ bot-financas/
 ```
 ---
 
-## 🔧 Como Executar
+## Como Executar
 
 1. **Clone o repositório:**
    ```bash
    git clone https://github.com/Mephisto-G/BotFinancas.git
    cd BotFinancas
 1. **Instale as dependências:**
-2.    npm install
+   
+       npm install
 3.**Configure as variáveis de ambiente (se necessário):**
      Adicione credenciais da API do WhatsApp conforme documentação
 4. **Execute o bot:**
