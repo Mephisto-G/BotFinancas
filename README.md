@@ -97,7 +97,7 @@ bot-financas/
    
 ## Como Usar
 Envie mensagens no seguinte formato para o bot:
-    ``` text
+    
          <Descrição> <Valor Total> <Número de Parcelas>
 
 Exemplos:
