@@ -262,6 +262,7 @@ const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
         headless: true,
+        protocolTimeout: 600000, // 10 minutos (a Pi é lenta, dá tempo pra ela)
         executablePath: process.platform === 'linux' ? '/usr/bin/chromium' : undefined,
         args: [
             '--no-sandbox',
@@ -270,6 +271,11 @@ const client = new Client({
             '--disable-dev-shm-usage',
             '--disable-gpu',
             '--disable-software-rasterizer',
+            '--no-first-run',
+            '--no-zygote',
+            '--disable-accelerated-2d-canvas',
+            '--renderer-process-limit=2',
+            '--js-flags=--max-old-space-size=256',
             '--headless=new'
         ]
     }
@@ -317,10 +323,23 @@ client.on('message_create', async (msg) => {
         try {
             await msg.reply('Ouvindo seu áudio, só um minutinho...');
 
-            const media = await msg.downloadMedia();
+            // Download com retry (falha de vez em quando em máquina lenta)
+            let media = null;
+            for (let tentativa = 1; tentativa <= 3; tentativa++) {
+                try {
+                    media = await msg.downloadMedia();
+                    break; // deu certo, sai do loop
+                } catch (erroDownload) {
+                    console.error(`[ÁUDIO] Falha no download (tentativa ${tentativa}/3): ${erroDownload.message}`);
+                    if (tentativa < 3) await new Promise(r => setTimeout(r, 3000));
+                }
+            }
 
-            if (!media || !media.data) {
-                throw new Error('Não foi possível obter os dados da mídia.');
+            // Se nem com retry funcionou, avisa o usuário e encerra
+            if (!media) {
+                await msg.reply('❌ Não consegui baixar seu áudio. Tenta enviar novamente, por favor.');
+                limparArquivosLocais();
+                return;
             }
 
             fs.writeFileSync(inputPath, media.data, 'base64');
