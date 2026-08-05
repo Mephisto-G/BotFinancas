@@ -7,7 +7,7 @@
 ![Google Gemini](https://img.shields.io/badge/Google%20Gemini-IA-4285F4?logo=google&logoColor=white)
 ![Raspberry Pi](https://img.shields.io/badge/Raspberry%20Pi-Compatível-A22846?logo=raspberrypi&logoColor=white)
 
-Bot pessoal de finanças que roda no **WhatsApp** (ideal para **Raspberry Pi**): você manda mensagem de **texto ou áudio**, a IA **Gemini** interpreta, e o bot **cadastra, consulta, calcula e exclui** suas compras parceladas — agora com persistência em **SQLite** e **backup automático**. 🎉
+Bot pessoal de finanças que roda no **WhatsApp** (ideal para **Raspberry Pi**): você manda mensagem de **texto ou áudio**, a IA **Gemini** interpreta, e o bot **cadastra, consulta, calcula e exclui** suas compras parceladas — com persistência em **SQLite** e **backup automático**. 🎉
 
 ---
 
