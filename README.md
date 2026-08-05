@@ -115,10 +115,8 @@ GEMINI_API_KEY=sua_chave_da_api_aqui
 BotFinancas/
 ├── index.js            # Bot: fila, IA, áudio, WhatsApp e backup
 ├── financeiro.js       # Camada de dados (SQLite: cadastrar/consultar/excluir/calcular + db)
-├── migrar.js           # Migração JSON → SQLite (rodar 1x, não apaga os JSONs)
 ├── financeiro.db       # Banco SQLite (gerado automaticamente)
 ├── .env                # Chave da API Gemini
-├── usuarios/           # (legado) antigos JSONs por usuário
 └── README.md
 ```
 
