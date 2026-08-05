@@ -20,10 +20,7 @@ Bot pessoal de finanças que roda no **WhatsApp** (ideal para **Raspberry Pi**):
 - [🔐 Configuração (.env)](#-configuração-env)
 - [📁 Estrutura do Projeto](#-estrutura-do-projeto)
 - [📲 Como Usar (comandos)](#-como-usar-comandos)
-- [🗄️ Banco de Dados (SQLite)](#️-banco-de-dados-sqlite)
 - [💾 Backup Automático](#-backup-automático)
-- [🔁 Migração JSON → SQLite](#-migração-json--sqlite)
-- [🔍 Consultas úteis no terminal](#-consultas-úteis-no-terminal)
 - [🐛 Troubleshooting](#-troubleshooting)
 - [🗺️ Roadmap](#️-roadmap)
 
