@@ -179,62 +179,6 @@ CREATE TABLE compras (
 - 📍 **Destino:** `/media/ps2share/backup` (pasta criada automaticamente se não existir).
 - 🛡️ **À prova de falhas:** se o share não estiver montado, o erro é apenas logado — **o bot não cai**.
 
-### Extras opcionais
-```javascript
-// Backup ao desligar (Ctrl+C)
-process.on('SIGINT', async () => {
-    await fazerBackupDoBanco();
-    process.exit(0);
-});
-
-// Backup periódico (a cada 6h)
-setInterval(fazerBackupDoBanco, 6 * 60 * 60 * 1000);
-```
-
----
-
-## 🔁 Migração JSON → SQLite
-
-O `migrar.js` **lê** os arquivos de `usuarios/*.json` e **insere** no SQLite.
-
-- ✅ **NÃO apaga** os JSONs originais (eles ficam como backup).
-- ⚠️ Rode **UMA ÚNICA VEZ** (rodar de novo duplica as compras).
-- ✔️ Confira depois: `SELECT COUNT(*) FROM compras;`
-
-```bash
-node migrar.js
-```
-
----
-
-## 🔍 Consultas úteis no terminal
-
-```bash
-# Abrir o banco (modo interativo)
-sqlite3 financeiro.db
-.headers on
-.mode column
-
-# Compras atreladas a um usuário
-SELECT c.produto, c.valor_parcela, c.parcela_atual, c.total_parcelas, c.chave_mes
-FROM compras c
-INNER JOIN usuarios u ON c.usuario_id = u.id
-WHERE u.numero = 'SEU_NUMERO'
-ORDER BY c.chave_mes, c.parcela_atual;
-
-# Total por mês
-SELECT chave_mes, SUM(valor_parcela) AS total FROM compras GROUP BY chave_mes;
-
-# Sair
-.quit
-```
-
-Ou em uma linha só (bash):
-```bash
-sqlite3 -header -column financeiro.db "SELECT * FROM compras;"
-```
-
----
 
 ## 🐛 Troubleshooting
 
@@ -245,8 +189,6 @@ sqlite3 -header -column financeiro.db "SELECT * FROM compras;"
 | Áudio não transcreve | Instale o FFmpeg (`sudo apt install ffmpeg`) |
 | `[BACKUP] ❌ Falha` | Confira se `/media/ps2share` está montado na Raspberry Pi |
 | `path is not defined` | Garanta `const path = require('path');` no `index.js` |
-| Prompt `....>` travado no sqlite | Aperte `Ctrl + C` (comando incompleto, faltou `;`) |
-
 ---
 
 ## 🗺️ Roadmap
@@ -261,6 +203,5 @@ sqlite3 -header -column financeiro.db "SELECT * FROM compras;"
 
 ## 📄 Licença
 
-Projeto pessoal de estudos — use e adapte à vontade. 💚
+Projeto pessoal de estudos — use e adapte à vontade.
 
-**Feito com 💙 no WhatsApp, Node.js e SQLite — rodando numa Raspberry Pi!** 
