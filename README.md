@@ -91,10 +91,7 @@ npm install whatsapp-web.js qrcode-terminal dotenv @google/genai fluent-ffmpeg b
 
 # 4. Configure a chave da IA (veja seção .env)
 
-# 5. (Somente se você já tinha dados nos JSONs) rode a migração UMA vez
-node migrar.js
-
-# 6. Inicie o bot e escaneie o QR Code com o WhatsApp
+# 5. Inicie o bot e escaneie o QR Code com o WhatsApp
 node index.js
 ```
 
