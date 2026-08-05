@@ -41,14 +41,14 @@ Bot pessoal de finanças que roda no **WhatsApp** (ideal para **Raspberry Pi**):
 - 🗑️ **Exclusão de produtos**: remove todas as parcelas do item.
 - 🛟 **Modo manual de segurança**: se a IA falhar/não existir, use comandos com `|`.
 
-### 🆕 Novas (atualização SQLite)
+### Banco de Dados
 - 🗄️ **Persistência em SQLite** (`better-sqlite3`) no lugar dos arquivos JSON por usuário.
 - 🔗 **Modelo relacional**: tabelas `usuarios` ↔ `compras` ligadas por chave estrangeira (`usuario_id`).
 - ⚡ **WAL mode** (`journal_mode = WAL`): mais performance e segurança contra corrupção.
 - 💬 **Funções retornam mensagens**: o `financeiro.js` monta o texto (inclusive no cadastro e em validações de erro) e o `index.js` só entrega no WhatsApp.
 - 🛡️ **Validação de entrada**: valores/parcelas inválidos retornam aviso amigável em vez de quebrar.
 - 💾 **Backup automático**: a cada inicialização do bot, espera a fila esvaziar e copia o banco (com data no nome) para `/media/ps2share/backup`.
-- 🔁 **Script de migração** (`migrar.js`): copia os JSONs antigos para o SQLite **sem apagar os originais**.
+
 
 ---
 
