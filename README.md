@@ -143,33 +143,6 @@ BotFinancas/
 
 ---
 
-## 🗄️ Banco de Dados (SQLite)
-
-Arquivo único: `financeiro.db` (com WAL ativo).
-
-```sql
-CREATE TABLE usuarios (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  numero TEXT UNIQUE NOT NULL,
-  nome TEXT
-);
-
-CREATE TABLE compras (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  usuario_id INTEGER NOT NULL,          -- 🔗 liga a compra ao dono (FK)
-  produto TEXT NOT NULL,
-  valor_parcela REAL NOT NULL,
-  parcela_atual INTEGER NOT NULL,
-  total_parcelas INTEGER NOT NULL,
-  chave_mes TEXT NOT NULL,              -- ex: "2026-08"
-  FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
-);
-```
-
-> O vínculo usuário ↔ compra é feito pelo `usuario_id` (badge interno). Os `?` das queries são preenchidos na ordem pelos valores de `.run()/.get()/.all()` — protegendo contra SQL injection.
-
----
-
 ## 💾 Backup Automático
 
 - 🔄 **Quando roda:** toda vez que o bot inicia (`node index.js`).
