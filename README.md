@@ -1,52 +1,271 @@
-# 📋 Especificação de Funcionamento: Bot de Controle Financeiro
+# 💰 BotFinanças — Bot de Finanças Pessoais via WhatsApp
 
-O sistema foi projetado sob o modelo de MVP (Mínimo Produto Viável), focando em custo zero de infraestrutura, alta performance e segurança de dados por meio de isolamento de arquivos.
+![Node.js](https://img.shields.io/badge/Node.js-14%2B-green?logo=nodedotjs&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-ES6%2B-yellow?logo=javascript&logoColor=white)
+![WhatsApp](https://img.shields.io/badge/WhatsApp-API-25D366?logo=whatsapp&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-Banco%20Local-blue?logo=sqlite&logoColor=white)
+![Google Gemini](https://img.shields.io/badge/Google%20Gemini-IA-4285F4?logo=google&logoColor=white)
+![Raspberry Pi](https://img.shields.io/badge/Raspberry%20Pi-Compatível-A22846?logo=raspberrypi&logoColor=white)
 
----
-
-## 1. Fluxo de Experiência do Usuário (UI/UX)
-* **Entrada:** O usuário envia uma mensagem de texto natural ou estruturada no WhatsApp.
-  * *Exemplo:* "Sofá 900 3" (Produto, Valor Total, Parcelas).
-* **Processamento:** O bot interpreta o texto, calcula o parcelamento e atualiza os dados.
-* **Saída:** O bot envia uma mensagem de confirmação de volta no WhatsApp detalhando o lançamento.
-
----
-
-## 2. Arquitetura de Dados (Isolamento por JSON)
-* **Estrutura:** Não há banco de dados centralizado. Cada usuário possui um arquivo `.json` próprio cujo nome é o seu número de telefone (Ex: `5511999999999.json`).
-* **Vantagens:** 
-  * **Privacidade:** Os dados de um usuário nunca se misturam com os de outro.
-  * **Performance:** Operações de leitura (`JSON.parse`) e escrita (`JSON.stringify`) ocorrem em arquivos minúsculos (geralmente menores que 50 KB), tornando o processamento instantâneo.
+Bot pessoal de finanças que roda no **WhatsApp** (ideal para **Raspberry Pi**): você manda mensagem de **texto ou áudio**, a IA **Gemini** interpreta, e o bot **cadastra, consulta, calcula e exclui** suas compras parceladas — agora com persistência em **SQLite** e **backup automático**. 🎉
 
 ---
 
-## 3. Motor de Agendamento e Datas (Objeto Date)
-* **Cálculo de Parcelas:** Ao receber uma compra parcelada, o software divide o valor igualmente e usa o loop `for` junto ao objeto nativo `new Date()` do JavaScript para projetar os meses futuros.
-* **Chaves Temporais:** Os gastos são agrupados dentro do arquivo por "gavetas de meses" no formato `ANO-MÊS` (Ex: `"2026-07"`).
-* **Virada de Ano Automática:** A lógica utiliza o método `.setMonth()` do JavaScript, que recalcula o ano civil automaticamente caso as parcelas passem do mês de Dezembro.
+## 📋 Índice
+
+- [🚀 Funcionalidades](#-funcionalidades)
+- [🛠️ Tecnologias](#️-tecnologias)
+- [📦 Pré-requisitos](#-pré-requisitos)
+- [⚙️ Instalação](#️-instalação)
+- [🔐 Configuração (.env)](#-configuração-env)
+- [📁 Estrutura do Projeto](#-estrutura-do-projeto)
+- [📲 Como Usar (comandos)](#-como-usar-comandos)
+- [🗄️ Banco de Dados (SQLite)](#️-banco-de-dados-sqlite)
+- [💾 Backup Automático](#-backup-automático)
+- [🔁 Migração JSON → SQLite](#-migração-json--sqlite)
+- [🔍 Consultas úteis no terminal](#-consultas-úteis-no-terminal)
+- [🐛 Troubleshooting](#-troubleshooting)
+- [🗺️ Roadmap](#️-roadmap)
 
 ---
 
-## 4. Gerenciamento de Concorrência (Fila Assíncrona)
-* **O Problema:** Como o Node.js trabalha de forma assíncrona, se um usuário mandar várias mensagens seguidas, o bot pode tentar ler e gravar no mesmo arquivo JSON ao mesmo tempo, corrompendo os dados (Condição de Corrida).
-* **A Solução:** Uma fila de mensagens em memória baseada em um Array (`[]`) e uma variável de controle (`botEstaOcupado`). 
-* **Fluxo:** As mensagens do WhatsApp entram na fila e são processadas rigorosamente uma por uma (Sequencialmente). A mensagem `B` só é processada quando a mensagem `A` terminar de gravar o JSON com sucesso.
+## 🚀 Funcionalidades
+
+### ✨ Principais
+- 🤖 **Interpretação por IA (Gemini)**: entenda linguagem natural ("comprei uma geladeira de 1200 em 10x").
+- 🎙️ **Transcrição de áudio**: mande mensagem de voz e o bot transcreve (FFmpeg + Gemini) e processa.
+- 📬 **Fila sequencial de mensagens**: processa uma por vez, sem concorrência (`filaDeMensagens` + `botEstaOcupado`).
+- ✅ **Cadastro de compras parceladas**: distribui automaticamente as parcelas nos meses seguintes.
+- 🔍 **Consulta de histórico**: geral ou por mês específico.
+- 🧮 **Cálculo de gastos**: subtotal por mês + total acumulado geral.
+- 🗑️ **Exclusão de produtos**: remove todas as parcelas do item.
+- 🛟 **Modo manual de segurança**: se a IA falhar/não existir, use comandos com `|`.
+
+### 🆕 Novas (atualização SQLite)
+- 🗄️ **Persistência em SQLite** (`better-sqlite3`) no lugar dos arquivos JSON por usuário.
+- 🔗 **Modelo relacional**: tabelas `usuarios` ↔ `compras` ligadas por chave estrangeira (`usuario_id`).
+- ⚡ **WAL mode** (`journal_mode = WAL`): mais performance e segurança contra corrupção.
+- 💬 **Funções retornam mensagens**: o `financeiro.js` monta o texto (inclusive no cadastro e em validações de erro) e o `index.js` só entrega no WhatsApp.
+- 🛡️ **Validação de entrada**: valores/parcelas inválidos retornam aviso amigável em vez de quebrar.
+- 💾 **Backup automático**: a cada inicialização do bot, espera a fila esvaziar e copia o banco (com data no nome) para `/media/ps2share/backup`.
+- 🔁 **Script de migração** (`migrar.js`): copia os JSONs antigos para o SQLite **sem apagar os originais**.
 
 ---
 
-## 5. Estratégia de Performance (Rotina de Arquivamento)
-* **Limpeza do Arquivo Ativo:** Para evitar que o arquivo principal do usuário acumule anos de histórico e fique pesado para leitura, o sistema possui uma rotina de expurgo na virada de ano.
-* **Arquivo Morto:** Os dados de anos anteriores são recortados e movidos para um arquivo de histórico dedicado (Ex: `historico_2026.json`). 
-* **Resultado:** O arquivo ativo do usuário permanece leve, contendo apenas o ano corrente e parcelas futuras que ainda vão vencer.
+## 🛠️ Tecnologias
+
+| Tecnologia | Uso |
+|---|---|
+| **Node.js (ES6+)** | Runtime do projeto |
+| **whatsapp-web.js** | Conexão com o WhatsApp (QR Code) |
+| **Google Gemini (`@google/genai`)** | Interpretação de texto e transcrição de áudio |
+| **fluent-ffmpeg + FFmpeg** | Conversão de áudio (ogg → mp3) |
+| **better-sqlite3** | Banco de dados SQLite síncrono e rápido |
+| **qrcode-terminal** | QR Code de conexão no terminal |
+| **dotenv** | Variáveis de ambiente (chave da API) |
 
 ---
 
-## 📂 Estrutura de Pastas Esperada
-```text
-bot-financas/
-  ├── package.json       (Dependências e scripts do projeto)
-  ├── financeiro.js      (Regras de negócio: parcelas e gerenciamento do JSON)
-  ├── index.js           (Servidor principal e conexão com o WhatsApp)
-  └── usuarios/          (O armário onde os arquivos são gravados)
-       ├── 5511999999999.json
-       └── 5511888888888.json
+## 📦 Pré-requisitos
+
+- **Node.js 14+**
+- **Chromium** (navegador para o whatsapp-web.js no Linux/Raspberry Pi)
+- **FFmpeg** (conversão de áudio)
+- **sqlite3 CLI** (opcional, para consultas manuais)
+- **Chave da API do Google Gemini**
+
+---
+
+## ⚙️ Instalação
+
+```bash
+# 1. Entre na pasta do projeto
+cd BotFinancas
+
+# 2. Dependências do sistema (Debian/Raspberry Pi OS)
+sudo apt update
+sudo apt install chromium ffmpeg sqlite3
+
+# 3. Dependências do Node
+npm install whatsapp-web.js qrcode-terminal dotenv @google/genai fluent-ffmpeg better-sqlite3
+
+# 4. Configure a chave da IA (veja seção .env)
+
+# 5. (Somente se você já tinha dados nos JSONs) rode a migração UMA vez
+node migrar.js
+
+# 6. Inicie o bot e escaneie o QR Code com o WhatsApp
+node index.js
+```
+
+---
+
+## 🔐 Configuração (.env)
+
+Crie um arquivo `.env` na raiz do projeto:
+
+```env
+GEMINI_API_KEY=sua_chave_da_api_aqui
+```
+
+> Sem chave (ou se a IA falhar), o bot ativa automaticamente o **modo manual** com `|`.
+
+---
+
+## 📁 Estrutura do Projeto
+
+```
+BotFinancas/
+├── index.js            # Bot: fila, IA, áudio, WhatsApp e backup
+├── financeiro.js       # Camada de dados (SQLite: cadastrar/consultar/excluir/calcular + db)
+├── migrar.js           # Migração JSON → SQLite (rodar 1x, não apaga os JSONs)
+├── financeiro.db       # Banco SQLite (gerado automaticamente)
+├── .env                # Chave da API Gemini
+├── usuarios/           # (legado) antigos JSONs por usuário
+└── README.md
+```
+
+---
+
+## 📲 Como Usar (comandos)
+
+### 🤖 Por linguagem natural (com IA)
+| Ação | Exemplo de mensagem |
+|---|---|
+| Cadastrar | *"comprei uma geladeira de 1200 reais em 10 vezes"* |
+| Consultar | *"quero ver meu histórico"* / *"compras de maio"* |
+| Calcular | *"quanto eu gastei esse mês?"* |
+| Excluir | *"apaga a geladeira do histórico"* |
+| Áudio | 🎤 mande o áudio falando qualquer uma das ações acima |
+
+### 🛟 Modo manual (fallback com `|`)
+| Ação | Formato |
+|---|---|
+| Cadastrar | `Geladeira | 1200 | 10` |
+| Consultar | `consulta | 8` *(ou só `consulta`)* |
+| Calcular | `calcular | 8` *(ou só `calcular`)* |
+| Excluir | `excluir | Geladeira` |
+
+---
+
+## 🗄️ Banco de Dados (SQLite)
+
+Arquivo único: `financeiro.db` (com WAL ativo).
+
+```sql
+CREATE TABLE usuarios (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  numero TEXT UNIQUE NOT NULL,
+  nome TEXT
+);
+
+CREATE TABLE compras (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  usuario_id INTEGER NOT NULL,          -- 🔗 liga a compra ao dono (FK)
+  produto TEXT NOT NULL,
+  valor_parcela REAL NOT NULL,
+  parcela_atual INTEGER NOT NULL,
+  total_parcelas INTEGER NOT NULL,
+  chave_mes TEXT NOT NULL,              -- ex: "2026-08"
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+);
+```
+
+> O vínculo usuário ↔ compra é feito pelo `usuario_id` (badge interno). Os `?` das queries são preenchidos na ordem pelos valores de `.run()/.get()/.all()` — protegendo contra SQL injection.
+
+---
+
+## 💾 Backup Automático
+
+- 🔄 **Quando roda:** toda vez que o bot inicia (`node index.js`).
+- ⏳ **Segurança:** espera a `filaDeMensagens` esvaziar **e** o bot ficar ocioso antes de copiar.
+- 📦 **Como copia:** usa `db.backup()` (snapshot consistente do SQLite, mesmo com WAL).
+- 📅 **Nome do arquivo:** com data → `financeiro_2026-08-06.db` (1 arquivo por dia; reinícios no mesmo dia sobrescrevem).
+- 📍 **Destino:** `/media/ps2share/backup` (pasta criada automaticamente se não existir).
+- 🛡️ **À prova de falhas:** se o share não estiver montado, o erro é apenas logado — **o bot não cai**.
+
+### Extras opcionais
+```javascript
+// Backup ao desligar (Ctrl+C)
+process.on('SIGINT', async () => {
+    await fazerBackupDoBanco();
+    process.exit(0);
+});
+
+// Backup periódico (a cada 6h)
+setInterval(fazerBackupDoBanco, 6 * 60 * 60 * 1000);
+```
+
+---
+
+## 🔁 Migração JSON → SQLite
+
+O `migrar.js` **lê** os arquivos de `usuarios/*.json` e **insere** no SQLite.
+
+- ✅ **NÃO apaga** os JSONs originais (eles ficam como backup).
+- ⚠️ Rode **UMA ÚNICA VEZ** (rodar de novo duplica as compras).
+- ✔️ Confira depois: `SELECT COUNT(*) FROM compras;`
+
+```bash
+node migrar.js
+```
+
+---
+
+## 🔍 Consultas úteis no terminal
+
+```bash
+# Abrir o banco (modo interativo)
+sqlite3 financeiro.db
+.headers on
+.mode column
+
+# Compras atreladas a um usuário
+SELECT c.produto, c.valor_parcela, c.parcela_atual, c.total_parcelas, c.chave_mes
+FROM compras c
+INNER JOIN usuarios u ON c.usuario_id = u.id
+WHERE u.numero = 'SEU_NUMERO'
+ORDER BY c.chave_mes, c.parcela_atual;
+
+# Total por mês
+SELECT chave_mes, SUM(valor_parcela) AS total FROM compras GROUP BY chave_mes;
+
+# Sair
+.quit
+```
+
+Ou em uma linha só (bash):
+```bash
+sqlite3 -header -column financeiro.db "SELECT * FROM compras;"
+```
+
+---
+
+## 🐛 Troubleshooting
+
+| Problema | Solução |
+|---|---|
+| QR Code não aparece | Verifique se o Chromium está instalado (`/usr/bin/chromium`) |
+| `no such table: compras` | Rode o bot uma vez (cria as tabelas) ou rode `node migrar.js` |
+| Áudio não transcreve | Instale o FFmpeg (`sudo apt install ffmpeg`) |
+| `[BACKUP] ❌ Falha` | Confira se `/media/ps2share` está montado na Raspberry Pi |
+| `path is not defined` | Garanta `const path = require('path');` no `index.js` |
+| Prompt `....>` travado no sqlite | Aperte `Ctrl + C` (comando incompleto, faltou `;`) |
+
+---
+
+## 🗺️ Roadmap
+
+- [ ] Nome customizado por usuário
+- [ ] Índices no banco para buscas rápidas
+- [ ] Backup com horário no nome (múltiplas versões por dia)
+- [ ] Relatório mensal automático enviado no WhatsApp
+- [ ] Dashboard web de acompanhamento
+
+---
+
+## 📄 Licença
+
+Projeto pessoal de estudos — use e adapte à vontade. 💚
+
+**Feito com 💙 no WhatsApp, Node.js e SQLite — rodando numa Raspberry Pi!** 

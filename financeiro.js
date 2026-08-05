@@ -1,224 +1,187 @@
-const fs = require('fs');
+const Database = require('better-sqlite3');
 const path = require('path');
 
-// Garante que a pasta 'usuarios' exista para não dar erro ao salvar
-const PASTA_USUARIOS = path.join(__dirname, 'usuarios');
-if (!fs.existsSync(PASTA_USUARIOS)) {
-    fs.mkdirSync(PASTA_USUARIOS);
-}
+// Cria (ou abre) o banco de dados
+const db = new Database(path.join(__dirname, 'financeiro.db'));
 
-/**
- * Função que calcula as parcelas e salva direto no JSON do usuário
- * @param {string} numeroUsuario - O número do WhatsApp (será o nome do arquivo)
- * @param {string} produto - Nome do produto/serviço
- * @param {number} valorTotal - Valor total da compra
- * @param {number} parcelas - Quantidade de parcelas
- */
+// Recomendação de performance para SQLite
+db.pragma('journal_mode = WAL');
 
-function calcular (numeroUsuario, mesConsulta) {
-    const caminhoArquivo = path.join(PASTA_USUARIOS, `${numeroUsuario}.json`);
-    
-    // 1. Checa se o usuário tem histórico
-    if (!fs.existsSync(caminhoArquivo)) {
-        return "Você ainda não possui nenhuma compra cadastrada! ❌";
+db.exec(`
+  CREATE TABLE IF NOT EXISTS usuarios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    numero TEXT UNIQUE NOT NULL,
+    nome TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS compras (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_id INTEGER NOT NULL,
+    produto TEXT NOT NULL,
+    valor_parcela REAL NOT NULL,
+    parcela_atual INTEGER NOT NULL,
+    total_parcelas INTEGER NOT NULL,
+    chave_mes TEXT NOT NULL,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+  );
+`);
+
+// ============================================================================
+// CADASTRAR
+// ============================================================================
+function cadastrarCompraParcelada(numeroUsuario, produto, valorTotal, parcelas) {
+  // Garante que o usuário existe (não duplica por causa do UNIQUE + ON CONFLICT)
+  db.prepare(`
+    INSERT INTO usuarios (numero, nome) VALUES (?, ?)
+    ON CONFLICT(numero) DO NOTHING
+  `).run(numeroUsuario, numeroUsuario);
+
+  const usuario = db.prepare('SELECT id FROM usuarios WHERE numero = ?').get(numeroUsuario);
+
+  const valorParcela = valorTotal / parcelas;
+  const dataInicial = new Date();
+
+  const stmtCompra = db.prepare(`
+    INSERT INTO compras (usuario_id, produto, valor_parcela, parcela_atual, total_parcelas, chave_mes)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+
+  // Transação: ou salva todas as parcelas, ou salva nenhuma (segurança)
+  const salvarCompra = db.transaction(() => {
+    for (let i = 0; i < parcelas; i++) {
+      let dataDaParcela = new Date(dataInicial);
+      dataDaParcela.setMonth(dataInicial.getMonth() + i);
+
+      const ano = dataDaParcela.getFullYear();
+      const mes = String(dataDaParcela.getMonth() + 1).padStart(2, '0');
+      const chaveMes = `${ano}-${mes}`;
+
+      stmtCompra.run(
+        usuario.id,
+        produto,
+        Number(valorParcela.toFixed(2)),
+        i + 1,
+        parcelas,
+        chaveMes
+      );
     }
-    
-    const conteudoArquivo = fs.readFileSync(caminhoArquivo, 'utf-8');
-    const dadosUsuario = JSON.parse(conteudoArquivo);
-    
-    // Se a pasta 'meses' estiver vazia
-    if (Object.keys(dadosUsuario.meses).length === 0) {
-        return "Seu histórico de compras está vazio! 📑";
-    }
+  });
 
-    let mensagemFormatada = `📊 *HISTÓRICO DE COMPRAS - ${dadosUsuario.nome}*\n\n`;
-
-    // 2. CASO A: Consulta de um mês específico
-    if (mesConsulta) {
-        const mesAlvo = String(mesConsulta).trim(); 
-        const mesFormatado = mesAlvo.padStart(2, '0'); // Garante que "8" vira "08"
-        
-        const chaveEncontrada = Object.keys(dadosUsuario.meses).find(chave => {
-            return chave.trim().endsWith(`-${mesFormatado}`);
-        });
-        
-        if (chaveEncontrada) {
-            const comprasDoMes = dadosUsuario.meses[chaveEncontrada]; 
-
-            const totalGasto = comprasDoMes.reduce((acumulador, compraAtual) => {
-                return acumulador + compraAtual.valorParcela;
-            }, 0); 
-
-            return `Você gastou R$: ${totalGasto.toFixed(2)} em ${chaveEncontrada} 😱`;
-
-        } else {
-            return `Não encontrei nenhum gasto registrado para o mês ${mesFormatated}. 🎉`;
-        }
-    }
-     // 3. CASO B: Consulta Geral (Se o usuário não disser o mês, mostra tudo)
-    let totalGeral = 0; // 🌟 Criamos o acumulador geral aqui fora!
-
-    for (let [mes, listaDeCompras] of Object.entries(dadosUsuario.meses)) {  
-        // 1. O reduce calcula o total deste mês específico
-        const totalDoMes = listaDeCompras.reduce((acumulador, compraAtual) => {
-            return acumulador + compraAtual.valorParcela; // Soma as parcelas usando o nome correto
-        }, 0);
-
-        // 2. Acumula o valor deste mês no total de todos os meses
-        totalGeral += totalDoMes;    
-        mensagemFormatada += `💰 *Subtotal de ${mes}:* R$ ${totalDoMes.toFixed(2)}\n\n`;
-}
-
-// 4. No final de todos os loops, adicionamos o grande total na mensagem!
-mensagemFormatada += `====== 📈 RESUMO GERAL ====== \n`;
-mensagemFormatada += `🔥 *Total acumulado de todos os meses:* R$ ${totalGeral.toFixed(2)}\n`;
-
-return mensagemFormatada;
-    
-    return mensagemFormatada;
-}
-
-function excluir(numeroUsuario, produtoDeletar){
-    const caminhoArquivo = path.join(PASTA_USUARIOS, `${numeroUsuario}.json`);
-    
-    if (fs.existsSync(caminhoArquivo)) {
-        const conteudoArquivo = fs.readFileSync(caminhoArquivo, 'utf-8');
-        const dadosUsuario = JSON.parse(conteudoArquivo);
-        
-        for (let chaveMes of Object.keys(dadosUsuario.meses)) {
-            
-            //Filtrar a lista  mantendo apenas os produtos cujo nome seja diferente do produto que quero deletar
-            dadosUsuario.meses[chaveMes] = dadosUsuario.meses[chaveMes].filter(compra => {
-                return compra.produto.toLowerCase() !== produtoDeletar.toLowerCase();
-            });
-
-            // 3. Limpeza se o mes ficar vazio
-            if (dadosUsuario.meses[chaveMes].length === 0) {
-                delete dadosUsuario.meses[chaveMes];
-            }
-        }
-        // Salvando
-        fs.writeFileSync(caminhoArquivo, JSON.stringify(dadosUsuario, null, 2), 'utf-8');
-        return(`[SUCESSO] Se o produto "${produtoDeletar}" existia, ele foi removido do histórico.`);
-        
-    } else {
-        return("Usuário não encontrado.");
-    }
+  salvarCompra();
+  console.log(`Sucesso: Compra de "${produto}" em ${parcelas}x salva para o usuário ${numeroUsuario}!`);
+  return `✅ Lançamento de *${produto}* (${parcelas}x) cadastrado com sucesso!`;
 }
 
 
 function consultar(numeroUsuario, mesConsulta) {
-    const caminhoArquivo = path.join(PASTA_USUARIOS, `${numeroUsuario}.json`);
-    
-    // 1. Checa se o usuário tem histórico
-    if (!fs.existsSync(caminhoArquivo)) {
-        return "Você ainda não possui nenhuma compra cadastrada! ❌";
+  const usuario = db.prepare('SELECT * FROM usuarios WHERE numero = ?').get(numeroUsuario);
+
+  if (!usuario) {
+    return "Você ainda não possui nenhuma compra cadastrada! ❌";
+  }
+
+  let sql = `SELECT * FROM compras WHERE usuario_id = ?`;
+  const params = [usuario.id];
+
+  if (mesConsulta) {
+    const mesFormatado = String(mesConsulta).trim().padStart(2, '0');
+    sql += ` AND chave_mes LIKE ?`;
+    params.push(`%-${mesFormatado}`);
+  }
+
+  sql += ` ORDER BY chave_mes, parcela_atual`;
+  const compras = db.prepare(sql).all(...params);
+
+  if (compras.length === 0) {
+    return mesConsulta
+      ? `Não encontrei nenhuma compra para o mês ${mesConsulta}. 🤷‍♂️`
+      : "Seu histórico de compras está vazio! 📑";
+  }
+
+  let mensagemFormatada = `📊 *HISTÓRICO DE COMPRAS - ${usuario.nome}*\n\n`;
+  let mesAtualNaLista = null;
+
+  for (const compra of compras) {
+    if (compra.chave_mes !== mesAtualNaLista) {
+      mensagemFormatada += `📅 *Mês: ${compra.chave_mes}*\n`;
+      mesAtualNaLista = compra.chave_mes;
     }
-    
-    const conteudoArquivo = fs.readFileSync(caminhoArquivo, 'utf-8');
-    const dadosUsuario = JSON.parse(conteudoArquivo);
-    
-    // Se a pasta 'meses' estiver vazia
-    if (Object.keys(dadosUsuario.meses).length === 0) {
-        return "Seu histórico de compras está vazio! 📑";
-    }
+    mensagemFormatada += `🔹 *Produto:* ${compra.produto}\n`;
+    mensagemFormatada += `   *Valor da Parcela:* R$ ${compra.valor_parcela.toFixed(2)}\n`;
+    mensagemFormatada += `   *Parcela:* ${compra.parcela_atual} de ${compra.total_parcelas}\n`;
+    mensagemFormatada += `----------------------------\n`;
+  }
 
-    let mensagemFormatada = `📊 *HISTÓRICO DE COMPRAS - ${dadosUsuario.nome}*\n\n`;
-
-    // 2. CASO A: Consulta de um mês específico
-    if (mesConsulta) {
-        const mesAlvo = String(mesConsulta).trim(); 
-        
-        // Procura se existe alguma chave que inclua esse número
-        const chaveEncontrada = Object.keys(dadosUsuario.meses).find(chave => {
-            const mesFormatado = mesAlvo.padStart(2, '0'); 
-            return chave.includes(mesFormatado);
-        });
-
-        // Se achou a chave correta (ex: encontrou "2026-08")
-        if (chaveEncontrada) {
-            const comprasDoMes = dadosUsuario.meses[chaveEncontrada];
-            
-            mensagemFormatada += `📅 *Mês: ${chaveEncontrada}*\n`;
-            for (let compra of comprasDoMes) {
-                mensagemFormatada += `🔹 *Produto:* ${compra.produto}\n`;
-                mensagemFormatada += `   *Valor da Parcela:* R$ ${compra.valorParcela.toFixed(2)}\n`;
-                mensagemFormatada += `   *Parcela:* ${compra.parcelaAtual} de ${compra.totalParcelas}\n`;
-                mensagemFormatada += `----------------------------\n`;
-            }
-            return mensagemFormatada;
-        } else {
-            return `Não encontrei nenhuma compra para o mês ${mesConsulta}. 🤷‍♂️`;
-        }
-    } 
-
-    // 3. CASO B: Consulta Geral (Se o usuário não disser o mês, mostra tudo)
-    for (let [mes, listaDeCompras] of Object.entries(dadosUsuario.meses)) {
-        mensagemFormatada += `📅 *Mês: ${mes}*\n`;
-        
-        for (let compra of listaDeCompras) {
-            mensagemFormatada += `🔹 *Produto:* ${compra.produto}\n`;
-            mensagemFormatada += `   *Valor da Parcela:* R$ ${compra.valorParcela.toFixed(2)}\n`;
-            mensagemFormatada += `   *Parcela:* ${compra.parcelaAtual} de ${compra.totalParcelas}\n`;
-            mensagemFormatada += `----------------------------\n`;
-        }
-    }
-    
-    return mensagemFormatada;
+  return mensagemFormatada;
 }
 
-function cadastrarCompraParcelada(numeroUsuario, produto, valorTotal, parcelas) {
-    const caminhoArquivo = path.join(PASTA_USUARIOS, `${numeroUsuario}.json`);
-    
-    // 1. LER OS DADOS EXISTENTES (Se o usuário já tiver um arquivo, abre ele. Se não, começa zerado)
-    let dadosUsuario = { nome: numeroUsuario, meses: {} };
-    
-    if (fs.existsSync(caminhoArquivo)) {
-        const conteudoArquivo = fs.readFileSync(caminhoArquivo, 'utf-8');
-        dadosUsuario = JSON.parse(conteudoArquivo);
+
+function calcular(numeroUsuario, mesConsulta) {
+  const usuario = db.prepare('SELECT id FROM usuarios WHERE numero = ?').get(numeroUsuario);
+
+  if (!usuario) {
+    return "Você ainda não possui nenhuma compra cadastrada! ❌";
+  }
+
+
+  if (mesConsulta) {
+    const mesFormatado = String(mesConsulta).trim().padStart(2, '0');
+    const resultado = db.prepare(`
+      SELECT SUM(valor_parcela) as total, chave_mes
+      FROM compras
+      WHERE usuario_id = ? AND chave_mes LIKE ?
+    `).get(usuario.id, `%-${mesFormatado}`);
+
+    if (resultado && resultado.total) {
+      return `Você gastou R$: ${resultado.total.toFixed(2)} em ${resultado.chave_mes} 😱`;
     }
+    return `Não encontrei nenhum gasto registrado para o mês ${mesConsulta}. 🎉`;
+  }
 
-    // 2. CALCULAR O VALOR DE CADA PARCELA
-    const valorParcela = valorTotal / parcelas;
-    const dataInicial = new Date(); // Pega o momento exato da compra
 
-    // 3. O LOOP FOR: Roda o número de vezes das parcelas
-    for (let i = 0; i < parcelas; i++) {
-        // Criamos uma cópia da data atual para avançar os meses sem bugar a original
-        let dataDaParcela = new Date(dataInicial);
-        
-        // Somas 'i' ao mês atual. O JS muda o ano sozinho se passar de dezembro!
-        dataDaParcela.setMonth(dataInicial.getMonth() + i);
-        
-        // Formata a data para gerar a chave do mês (Ex: "2026-06")
-        const ano = dataDaParcela.getFullYear();
-        const mes = String(dataDaParcela.getMonth() + 1).padStart(2, '0'); // +1 porque Janeiro em JS é 0
-        const chaveMes = `${ano}-${mes}`;
+  const porMes = db.prepare(`
+    SELECT chave_mes, SUM(valor_parcela) as total
+    FROM compras
+    WHERE usuario_id = ?
+    GROUP BY chave_mes
+    ORDER BY chave_mes
+  `).all(usuario.id);
 
-        // Cria a estrutura do produto/parcela atual
-        const novaParcela = {
-            produto: produto,
-            valorParcela: Number(valorParcela.toFixed(2)), // Garante duas casas decimais (ex: 33.33)
-            parcelaAtual: i + 1,
-            totalParcelas: parcelas
-        };
+  if (porMes.length === 0) {
+    return "Seu histórico de compras está vazio! 📑";
+  }
 
-        // Se aquele mês ainda não existe nas gavetas do usuário, cria uma lista vazia
-        if (!dadosUsuario.meses[chaveMes]) {
-            dadosUsuario.meses[chaveMes] = [];
-        }
+  let mensagemFormatada = `📊 *HISTÓRICO DE COMPRAS - ${usuario.nome}*\n\n`;
+  let totalGeral = 0;
 
-        // Adiciona a parcela dentro da lista daquele mês específico
-        dadosUsuario.meses[chaveMes].push(novaParcela);
-    }
+  for (const linha of porMes) {
+    mensagemFormatada += `💰 *Subtotal de ${linha.chave_mes}:* R$ ${linha.total.toFixed(2)}\n\n`;
+    totalGeral += linha.total;
+  }
 
-    // 4. SALVAR DE VOLTA NO ARQUIVO JSON
-    // O 'null, 2' serve para deixar o texto do JSON quebrado e identado (bonito de ler)
-    fs.writeFileSync(caminhoArquivo, JSON.stringify(dadosUsuario, null, 2), 'utf-8');
-    
-    console.log(`Sucesso: Compra de "${produto}" em ${parcelas}x salva para o usuário ${numeroUsuario}!`);
+  mensagemFormatada += `====== 📈 RESUMO GERAL ====== \n`;
+  mensagemFormatada += `🔥 *Total acumulado de todos os meses:* R$ ${totalGeral.toFixed(2)}\n`;
+
+  return mensagemFormatada;
 }
 
-module.exports = { cadastrarCompraParcelada, consultar, excluir, calcular };
 
+function excluir(numeroUsuario, produtoDeletar) {
+  const usuario = db.prepare('SELECT id FROM usuarios WHERE numero = ?').get(numeroUsuario);
 
+  if (!usuario) {
+    return "Usuário não encontrado.";
+  }
+
+  const resultado = db.prepare(`
+    DELETE FROM compras
+    WHERE usuario_id = ? AND LOWER(produto) = LOWER(?)
+  `).run(usuario.id, produtoDeletar);
+
+  if (resultado.changes > 0) {
+    return `[SUCESSO] O produto "${produtoDeletar}" foi removido do histórico (${resultado.changes} parcela(s) removida(s)). ✅`;
+  }
+  return `Não encontrei o produto "${produtoDeletar}" no seu histórico. 🤷‍♂️`;
+}
+
+module.exports = { cadastrarCompraParcelada, consultar, excluir, calcular, db};

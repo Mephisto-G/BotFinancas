@@ -7,3 +7,7 @@ yarn-error.log*
 .env
 .wwebjs_cache/
 .wwebjs_auth/
+migrar.js
+financeiro.db
+financeiro.db-shm
+financeiro.db-wal
